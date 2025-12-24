@@ -5,14 +5,13 @@ AdminMenu.__index = AdminMenu
 -- НАСТРОЙКИ
 AdminMenu.Settings = {
 	ToggleKey = Enum.KeyCode.RightShift,
-	Gradient = {
-		ColorSequence.new{
-			ColorSequenceKeypoint.new(0, Color3.fromRGB(40, 40, 40)),
-			ColorSequenceKeypoint.new(1, Color3.fromRGB(20, 20, 20))
-		}
-	},
+	Gradient = ColorSequence.new({
+		ColorSequenceKeypoint.new(0, Color3.fromRGB(40, 40, 40)),
+		ColorSequenceKeypoint.new(1, Color3.fromRGB(20, 20, 20))
+	}),
 	BackgroundTransparency = 0.2
 }
+
 
 -- СОЗДАНИЕ GUI
 function AdminMenu:Create()

@@ -2,6 +2,6 @@
 
 ---
 
-## English documentation:us: -- [Navigation file](Documentation/EN/Navigation.md)
+## English documentation -- [Navigation file](Documentation/EN/Navigation.md)
 
 --

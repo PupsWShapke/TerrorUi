@@ -12,7 +12,7 @@ Since **TerrorUi** is a remote library, you should use `loadstring` to fetch and
 
 ```lua
 -- Replace the URL with your raw script link
-local TerrorUi = loadstring(game:HttpGet("https://raw.githubusercontent.com/YourUsername/YourRepo/main/GuiApi.lua"))()
+local TerrorUi = loadstring(game:HttpGet("https://raw.githubusercontent.com/PupsWShapke/TerrorUi/refs/heads/main/Main.luau"))()
 
 -- Constructor: (Title, Subtext, Theme)
 local GUI = TerrorUi.new("TERROR", "v3.0 Premium", "Default")

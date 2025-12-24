@@ -39,7 +39,6 @@ function AdminMenu:Create()
 	gradient.Color = self.Settings.Gradient
 	gradient.Parent = main
 
-	-- ЗАГОЛОВОК
 	local title = Instance.new("TextLabel")
 	title.Size = UDim2.new(1, -20, 0, 40)
 	title.Position = UDim2.fromOffset(10, 10)
@@ -48,8 +47,10 @@ function AdminMenu:Create()
 	title.TextColor3 = Color3.fromRGB(255, 255, 255)
 	title.Font = Enum.Font.GothamMedium
 	title.TextSize = 20
-	title.TextXAlignment = Left
+	title.TextXAlignment = Enum.TextXAlignment.Left
+	title.TextYAlignment = Enum.TextYAlignment.Center
 	title.Parent = main
+
 
 	self.Gui = gui
 	self.MainFrame = main

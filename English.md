@@ -1,22 +1,21 @@
-Here is the **Complete Official Documentation** for the **TerrorUi v3.0** framework. Since the library is extensive, I have divided the documentation into logical sections.
-
----
-
 # # TerrorUi v3.0 | Official Framework Documentation
 
 **TerrorUi** is a high-performance, object-oriented UI library for Roblox, designed to provide a sleek, modern interface for scripts and tools. It supports dynamic themes, mobile-friendly interactions, and smooth animations.
 
 ---
 
-## ## 1. Core Concepts & Initialization
+## ## 1. Setup & Initialization (Remote Load)
 
-The library uses a constructor to create a new interface instance. This instance acts as the "Manager" for your entire GUI.
+Since **TerrorUi** is a remote library, you should use `loadstring` to fetch and execute the code from your hosting provider (e.g., GitHub or Pastebin). This method ensures you always have the latest version of the API.
 
-### ### The Constructor
+### ### Fetching the Library
 
 ```lua
-local TerrorUi = require(path.to.module)
-local GUI = TerrorUi.new(Title, Subtext, Theme)
+-- Replace the URL with your raw script link
+local TerrorUi = loadstring(game:HttpGet("https://raw.githubusercontent.com/YourUsername/YourRepo/main/GuiApi.lua"))()
+
+-- Constructor: (Title, Subtext, Theme)
+local GUI = TerrorUi.new("TERROR", "v3.0 Premium", "Default")
 
 ```
 
@@ -24,26 +23,30 @@ local GUI = TerrorUi.new(Title, Subtext, Theme)
 * **`Subtext`** (string): Small text displayed next to the title (e.g., "v3.0").
 * **`Theme`** (string): The initial theme name (`"Default"` or `"Midnight"`).
 
+> **Important:** Your source `GuiApi.lua` file must end with `return TerrorUi` for this method to work correctly.
+
+---
+
 ### ### Global Methods (Manager API)
 
 #### `GUI:Toggle()`
 
-Switches the visibility of the main window using a smooth CanvasGroup fade animation.
+Switches the visibility of the main window using a smooth **CanvasGroup** fade animation. Useful for binding to a custom key.
 
 #### `GUI:Notify(Title, Text, Duration)`
 
-Creates a temporary notification window in the bottom-right corner.
+Spawns a temporary notification window in the bottom-right corner of the screen.
 
-* **`Title`**: The header of the notification.
-* **`Text`**: The main message.
+* **`Title`**: The header of the notification (e.g., "Warning").
+* **`Text`**: The main message body.
 * **`Duration`**: How many seconds the notification stays visible (default: 5).
 
 #### `GUI:ApplyTheme(ThemeName or Table)`
 
-Updates the colors and styling of the entire interface in real-time.
+Updates the colors and styling of the entire interface in real-time without flickering.
 
 * **Built-in Themes**: `"Default"`, `"Midnight"`.
-* **Custom Theme**: You can pass a table containing `MainBg`, `Accent`, `Sidebar`, etc.
+* **Custom Theme**: You can pass a table containing specific color keys (`MainBg`, `Accent`, `Sidebar`, etc.) to create a unique look.
 
 ---
 

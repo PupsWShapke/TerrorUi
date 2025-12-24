@@ -1,5 +1,5 @@
 
-```markdown
+
 # 💀 TerrorUi v3.1
 
 **TerrorUi** is a powerful, lightweight, and highly customizable UI library for Roblox. Designed for performance and aesthetics, it features smooth animations, dynamic themes, and full mobile support.
@@ -59,7 +59,3 @@ Select your preferred language to view the full API reference and guides.
 ---
 
 *Developed by [PupsWShapke](https://github.com/PupsWShapke). Licensed under MIT.*
-
-Хочешь, чтобы я написал содержимое для одного из них (например, для **Navigation.md** на русском), чтобы ты использовал его как шаблон для остальных?
-
-```

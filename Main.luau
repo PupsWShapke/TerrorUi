@@ -1,747 +1,616 @@
 local UserInputService = game:GetService("UserInputService")
 local TweenService = game:GetService("TweenService")
-local RunService = game:GetService("RunService")
 local Players = game:GetService("Players")
-
-local LocalPlayer = Players.LocalPlayer
-local Mouse = LocalPlayer:GetMouse()
 
 local TerrorUi = {}
 TerrorUi.__index = TerrorUi
 
--- [1. СИСТЕМА ТЕМ]
--- Мы выносим темы в отдельную таблицу, чтобы их было легко дополнять.
+-- [1. НАЛАШТУВАННЯ ТА АНІМАЦІЇ]
+local Settings = {
+	AnimSpeed = 0.25,
+	Easing = Enum.EasingStyle.Quart,
+	CornerRadius = UDim.new(0, 8)
+}
+
+local function Tween(obj, props, time)
+	local info = TweenInfo.new(time or Settings.AnimSpeed, Settings.Easing)
+	local tw = TweenService:Create(obj, info, props)
+	tw:Play()
+	return tw
+end
+
+-- [2. ТЕМИ]
 local Themes = {
 	Default = {
 		MainBg = Color3.fromRGB(15, 15, 15),
 		Accent = Color3.fromRGB(255, 50, 50),
-		Sidebar = Color3.fromRGB(12, 12, 12),
 		ElementBg = Color3.fromRGB(25, 25, 25),
 		Text = Color3.fromRGB(255, 255, 255),
 		SecondaryText = Color3.fromRGB(150, 150, 150),
-		Rounding = UDim.new(0, 8),
-		Transparency = 0.1
 	},
 	Midnight = {
 		MainBg = Color3.fromRGB(5, 5, 10),
 		Accent = Color3.fromRGB(0, 150, 255),
-		Sidebar = Color3.fromRGB(2, 2, 5),
 		ElementBg = Color3.fromRGB(15, 15, 30),
 		Text = Color3.fromRGB(255, 255, 255),
 		SecondaryText = Color3.fromRGB(120, 120, 180),
-		Rounding = UDim.new(0, 12),
-		Transparency = 0.05
 	}
 }
 
--- [2. ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ]
--- Функция для плавного перетаскивания (Lerp Dragging)
-function TerrorUi:_MakeDraggable(obj)
-	local dragging = false
-	local dragInput, dragStart, startPos
-
-	obj.InputBegan:Connect(function(input)
+-- [3. ВНУТРІШНІ МЕТОДИ]
+function TerrorUi:_SetupDragging(hoverInstance, dragInstance)
+	local dragging, dragInput, dragStart, startPos
+	hoverInstance.InputBegan:Connect(function(input)
 		if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
 			dragging = true
 			dragStart = input.Position
-			-- Если перетаскиваем за хедер, двигаем все окно
-			startPos = (obj.Name == "Header" and self.MainFrame.Position or obj.Position)
-
+			startPos = dragInstance.Position
 			input.Changed:Connect(function()
-				if input.UserInputState == Enum.UserInputState.End then
-					dragging = false
-				end
+				if input.UserInputState == Enum.UserInputState.End then dragging = false end
 			end)
 		end
 	end)
-
-	obj.InputChanged:Connect(function(input)
-		if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then
-			dragInput = input
-		end
+	hoverInstance.InputChanged:Connect(function(input)
+		if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then dragInput = input end
 	end)
-
 	UserInputService.InputChanged:Connect(function(input)
 		if input == dragInput and dragging then
 			local delta = input.Position - dragStart
-			local targetPos = UDim2.new(
-				startPos.X.Scale, 
-				startPos.X.Offset + delta.X, 
-				startPos.Y.Scale, 
-				startPos.Y.Offset + delta.Y
-			)
-
-			if obj.Name == "Header" then
-				self.MainFrame.Position = targetPos
-			else
-				obj.Position = targetPos
-			end
+			TweenService:Create(dragInstance, TweenInfo.new(0.1, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+				Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+			}):Play()
 		end
 	end)
 end
 
--- [3. КОНСТРУКТОР ИНТЕРФЕЙСА]
+-- [4. КОНСТРУКТОР ТА ОСНОВНЕ ВІКНО]
 function TerrorUi.new(title, subtext, startTheme)
 	local self = setmetatable({}, TerrorUi)
-
-	-- Инициализируем хранилище объектов для ApplyTheme
-	self.Objects = {
-		Separators = {},
-		Elements = {},
-		Tabs = {},
-		Labels = {}
-	}
-
 	self.Theme = Themes[startTheme] or Themes.Default
-	self.Pages = {}
-	self.IsToggled = false
+	self.IsToggled = true
+	self.Objects = {Elements = {}, Tabs = {}}
 
-	-- ScreenGui
 	self.ScreenGui = Instance.new("ScreenGui")
-	self.ScreenGui.Name = "TerrorUi_" .. math.random(1000, 9999)
+	self.ScreenGui.Name = "TerrorUi"
 	self.ScreenGui.ResetOnSpawn = false
-	self.ScreenGui.DisplayOrder = 100
-	self.ScreenGui.Parent = LocalPlayer:WaitForChild("PlayerGui")
+	self.ScreenGui.IgnoreGuiInset = true
+	self.ScreenGui.Parent = Players.LocalPlayer:WaitForChild("PlayerGui")
 
-	-- Главное окно
 	self.MainFrame = Instance.new("CanvasGroup")
-	self.MainFrame.Name = "MainFrame"
 	self.MainFrame.Size = UDim2.new(0, 550, 0, 380)
 	self.MainFrame.Position = UDim2.new(0.5, -275, 0.5, -190)
 	self.MainFrame.BackgroundColor3 = self.Theme.MainBg
-	self.MainFrame.BackgroundTransparency = self.Theme.Transparency
-	self.MainFrame.BorderSizePixel = 0
-	self.MainFrame.GroupTransparency = 1
-	self.MainFrame.Visible = false
 	self.MainFrame.Parent = self.ScreenGui
+	Instance.new("UICorner", self.MainFrame).CornerRadius = Settings.CornerRadius
 
-	local MainCorner = Instance.new("UICorner")
-	MainCorner.CornerRadius = self.Theme.Rounding
-	MainCorner.Parent = self.MainFrame
-
-	-- Хедер
-	self.Header = Instance.new("Frame")
-	self.Header.Name = "Header"
-	self.Header.Size = UDim2.new(1, 0, 0, 35)
+	self.Header = Instance.new("Frame", self.MainFrame)
+	self.Header.Size = UDim2.new(1, 0, 0, 40)
 	self.Header.BackgroundTransparency = 1
-	self.Header.Parent = self.MainFrame
 
-	local TitleLabel = Instance.new("TextLabel")
-	TitleLabel.Size = UDim2.new(1, -100, 1, 0)
+	local TitleLabel = Instance.new("TextLabel", self.Header)
+	TitleLabel.Size = UDim2.new(1, -20, 1, 0)
 	TitleLabel.Position = UDim2.new(0, 15, 0, 0)
-	TitleLabel.BackgroundTransparency = 1
+	TitleLabel.Text = title .. " <font color='#808080'>" .. subtext .. "</font>"
 	TitleLabel.RichText = true
-	TitleLabel.Text = title .. " <font color='rgb(150,150,150)'>" .. subtext .. "</font>"
 	TitleLabel.TextColor3 = self.Theme.Text
 	TitleLabel.Font = Enum.Font.GothamBold
-	TitleLabel.TextSize = 16
-	TitleLabel.TextXAlignment = Enum.TextXAlignment.Left
-	TitleLabel.Parent = self.Header
+	TitleLabel.TextSize = 18
+	TitleLabel.TextXAlignment = 0
+	TitleLabel.BackgroundTransparency = 1
 
-	-- Управление (Закрыть и Свернуть)
-	local Controls = Instance.new("Frame")
-	Controls.Size = UDim2.new(0, 70, 1, 0)
-	Controls.Position = UDim2.new(1, -75, 0, 0)
-	Controls.BackgroundTransparency = 1
-	Controls.Parent = self.Header
+	self.Sidebar = Instance.new("Frame", self.MainFrame)
+	self.Sidebar.Size = UDim2.new(0, 140, 1, -50)
+	self.Sidebar.Position = UDim2.new(0, 10, 0, 45)
+	self.Sidebar.BackgroundTransparency = 1
 
-	local function createControl(txt, color, xOffset, callback)
-		local btn = Instance.new("TextButton")
-		btn.Size = UDim2.new(0, 22, 0, 22)
-		btn.Position = UDim2.new(0, xOffset, 0.5, -11)
-		btn.BackgroundColor3 = color
-		btn.Text = txt
-		btn.TextColor3 = Color3.new(1, 1, 1)
-		btn.Font = Enum.Font.GothamBold
-		btn.Parent = Controls
-		Instance.new("UICorner", btn).CornerRadius = UDim.new(1, 0)
-		btn.MouseButton1Click:Connect(callback)
-	end
+	self.TabContainer = Instance.new("Frame", self.Sidebar)
+	self.TabContainer.Size = UDim2.new(1, 0, 1, 0)
+	self.TabContainer.BackgroundTransparency = 1
+	Instance.new("UIListLayout", self.TabContainer).Padding = UDim.new(0, 5)
 
-	createControl("×", Color3.fromRGB(200, 50, 50), 40, function() self.ScreenGui:Destroy() end)
-	createControl("-", Color3.fromRGB(60, 60, 60), 10, function() self:Toggle() end)
-
-	-- Разделители
-	local Sep1 = Instance.new("Frame")
-	Sep1.Size = UDim2.new(1, 0, 0, 1)
-	Sep1.Position = UDim2.new(0, 0, 0, 35)
-	Sep1.BackgroundColor3 = self.Theme.ElementBg
-	Sep1.BorderSizePixel = 0
-	Sep1.Parent = self.MainFrame
-	table.insert(self.Objects.Separators, Sep1)
-
-	local Sep2 = Instance.new("Frame")
-	Sep2.Size = UDim2.new(0, 1, 1, -35)
-	Sep2.Position = UDim2.new(0, 140, 0, 35)
-	Sep2.BackgroundColor3 = self.Theme.ElementBg
-	Sep2.BorderSizePixel = 0
-	Sep2.Parent = self.MainFrame
-	table.insert(self.Objects.Separators, Sep2)
-
-	-- Контейнер для Табов (Scrolling)
-	self.TabList = Instance.new("ScrollingFrame")
-	self.TabList.Size = UDim2.new(0, 130, 1, -45)
-	self.TabList.Position = UDim2.new(0, 5, 0, 40)
-	self.TabList.BackgroundTransparency = 1
-	self.TabList.BorderSizePixel = 0
-	self.TabList.ScrollBarThickness = 0
-	self.TabList.Parent = self.MainFrame
-
-	local TabListLayout = Instance.new("UIListLayout")
-	TabListLayout.Padding = UDim.new(0, 5)
-	TabListLayout.Parent = self.TabList
-
-	-- Контейнер для Страниц
-	self.PageContainer = Instance.new("Frame")
-	self.PageContainer.Size = UDim2.new(1, -155, 1, -45)
-	self.PageContainer.Position = UDim2.new(0, 150, 0, 40)
-	self.PageContainer.BackgroundTransparency = 1
-	self.PageContainer.Parent = self.MainFrame
-
-	-- Контейнер уведомлений (NotifContainer)
-	self.NotifContainer = Instance.new("Frame")
-	self.NotifContainer.Size = UDim2.new(0, 250, 1, -20)
-	self.NotifContainer.Position = UDim2.new(1, -260, 0, 10)
-	self.NotifContainer.BackgroundTransparency = 1
-	self.NotifContainer.Parent = self.ScreenGui
-
-	local NotifLayout = Instance.new("UIListLayout")
-	NotifLayout.VerticalAlignment = Enum.VerticalAlignment.Bottom
-	NotifLayout.Padding = UDim.new(0, 8)
-	NotifLayout.Parent = self.NotifContainer
-
-	-- Инициализируем мобильную кнопку и драг
-	self:_MakeDraggable(self.Header)
-	self:CreateMobileButton()
-
+	self:_SetupDragging(self.Header, self.MainFrame)
 	return self
 end
 
--- [4. УПРАВЛЕНИЕ ВИДИМОСТЬЮ]
+-- [5. ГЛОБАЛЬНІ ФУНКЦІЇ КЕРУВАННЯ]
 function TerrorUi:Toggle()
 	self.IsToggled = not self.IsToggled
-
-	if self.IsToggled then
-		self.MainFrame.Visible = true
-		TweenService:Create(self.MainFrame, TweenInfo.new(0.3, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {GroupTransparency = 0}):Play()
-	else
-		local tw = TweenService:Create(self.MainFrame, TweenInfo.new(0.3, Enum.EasingStyle.Quart, Enum.EasingDirection.In), {GroupTransparency = 1})
-		tw:Play()
-		tw.Completed:Connect(function()
-			if not self.IsToggled then self.MainFrame.Visible = false end
-		end)
-	end
+	-- Плавне зникнення через GroupTransparency (вимагає CanvasGroup)
+	Tween(self.MainFrame, {GroupTransparency = self.IsToggled and 0 or 1})
+	-- Вимикаємо видимість після анімації, щоб не блокувати кліки
+	task.delay(self.IsToggled and 0 or Settings.AnimSpeed, function()
+		self.MainFrame.Visible = self.IsToggled
+	end)
 end
 
--- [5. УВЕДОМЛЕНИЯ]
 function TerrorUi:Notify(title, text, duration)
-	local duration = duration or 5
+	local n = Instance.new("Frame", self.ScreenGui)
+	n.Size = UDim2.new(0, 220, 0, 60)
+	n.Position = UDim2.new(1, 10, 1, -70)
+	n.BackgroundColor3 = self.Theme.MainBg
+	Instance.new("UICorner", n).CornerRadius = Settings.CornerRadius
+	local s = Instance.new("UIStroke", n)
+	s.Color = self.Theme.Accent
+	s.Thickness = 2
 
-	local Notif = Instance.new("CanvasGroup")
-	Notif.Size = UDim2.new(1, 0, 0, 65)
-	Notif.BackgroundColor3 = self.Theme.MainBg
-	Notif.GroupTransparency = 1
-	Notif.Parent = self.NotifContainer
+	local tl = Instance.new("TextLabel", n)
+	tl.Size = UDim2.new(1, -20, 0, 25)
+	tl.Position = UDim2.new(0, 10, 0, 5)
+	tl.Text = title
+	tl.TextColor3 = self.Theme.Accent
+	tl.Font = Enum.Font.GothamBold
+	tl.TextSize = 14
+	tl.BackgroundTransparency = 1
+	tl.TextXAlignment = 0
 
-	Instance.new("UICorner", Notif).CornerRadius = self.Theme.Rounding
-	local Stroke = Instance.new("UIStroke", Notif)
-	Stroke.Color = self.Theme.Accent
-	Stroke.Thickness = 1.5
+	local cl = Instance.new("TextLabel", n)
+	cl.Size = UDim2.new(1, -20, 0, 20)
+	cl.Position = UDim2.new(0, 10, 0, 30)
+	cl.Text = text
+	cl.TextColor3 = self.Theme.Text
+	cl.Font = Enum.Font.Gotham
+	cl.TextSize = 12
+	cl.BackgroundTransparency = 1
+	cl.TextXAlignment = 0
 
-	local TL = Instance.new("TextLabel", Notif)
-	TL.Size = UDim2.new(1, -20, 0, 25); TL.Position = UDim2.new(0, 10, 0, 5)
-	TL.Text = title:upper(); TL.TextColor3 = self.Theme.Accent; TL.Font = Enum.Font.GothamBold; TL.BackgroundTransparency = 1; TL.TextXAlignment = 0; TL.TextSize = 13
-
-	local ML = Instance.new("TextLabel", Notif)
-	ML.Size = UDim2.new(1, -20, 0, 30); ML.Position = UDim2.new(0, 10, 0, 28)
-	ML.Text = text; ML.TextColor3 = self.Theme.SecondaryText; ML.Font = Enum.Font.Gotham; ML.BackgroundTransparency = 1; ML.TextXAlignment = 0; ML.TextWrapped = true; ML.TextSize = 12
-
-	TweenService:Create(Notif, TweenInfo.new(0.4), {GroupTransparency = 0}):Play()
-
-	local TimerBar = Instance.new("Frame", Notif)
-	TimerBar.Size = UDim2.new(1, 0, 0, 2); TimerBar.Position = UDim2.new(0, 0, 1, -2); TimerBar.BackgroundColor3 = self.Theme.Accent; TimerBar.BorderSizePixel = 0
-
-	TweenService:Create(TimerBar, TweenInfo.new(duration, Enum.EasingStyle.Linear), {Size = UDim2.new(0, 0, 0, 2)}):Play()
-
-	task.delay(duration, function()
-		local out = TweenService:Create(Notif, TweenInfo.new(0.4), {GroupTransparency = 1})
-		out:Play()
-		out.Completed:Connect(function() Notif:Destroy() end)
+	Tween(n, {Position = UDim2.new(1, -230, 1, -70)})
+	task.delay(duration or 5, function()
+		Tween(n, {Position = UDim2.new(1, 10, 1, -70)}).Completed:Connect(function()
+			n:Destroy()
+		end)
 	end)
 end
 
 function TerrorUi:CreateMobileButton()
-	local MobileBtn = Instance.new("TextButton")
-	MobileBtn.Name = "TerrorMobileBtn"
-	MobileBtn.Size = UDim2.new(0, 50, 0, 50)
-	MobileBtn.Position = UDim2.new(0.1, 0, 0.1, 0)
-	MobileBtn.BackgroundColor3 = self.Theme.MainBg
-	MobileBtn.Text = "T"
-	MobileBtn.TextColor3 = self.Theme.Accent
-	MobileBtn.Font = Enum.Font.GothamBold
-	MobileBtn.TextSize = 24
-	MobileBtn.Parent = self.ScreenGui
-	self.MobileButton = MobileBtn
+	local MB = Instance.new("TextButton", self.ScreenGui)
+	MB.Name = "TerrorMobile"
+	MB.Size = UDim2.new(0, 50, 0, 50)
+	MB.Position = UDim2.new(0, 20, 0.5, -25)
+	MB.BackgroundColor3 = self.Theme.MainBg
+	MB.Text = "T"
+	MB.TextColor3 = self.Theme.Accent
+	MB.Font = Enum.Font.GothamBold
+	MB.TextSize = 24
+	Instance.new("UICorner", MB).CornerRadius = UDim.new(1, 0)
+	local s = Instance.new("UIStroke", MB)
+	s.Color = self.Theme.Accent
+	s.Thickness = 2
 
-	local Corner = Instance.new("UICorner", MobileBtn)
-	Corner.CornerRadius = UDim.new(1, 0)
-
-	local Stroke = Instance.new("UIStroke", MobileBtn)
-	Stroke.Color = self.Theme.Accent
-	Stroke.Thickness = 2
-	Stroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
-
-	MobileBtn.MouseButton1Click:Connect(function()
+	MB.MouseButton1Click:Connect(function()
 		self:Toggle()
 	end)
-
-	-- Делаем кнопку перетаскиваемой (используем наш метод из части 1)
-	self:_MakeDraggable(MobileBtn)
+	self:_SetupDragging(MB, MB)
 end
 
--- [7. СИСТЕМА ВКЛАДОК (AddTab)]
+-- [6. СИСТЕМА ВКЛАДОК (AddTab)]
 function TerrorUi:AddTab(name)
-	local Page = Instance.new("ScrollingFrame")
+	local ui = self -- Посилання на головний об'єкт для API елементів
+	local theme = ui.Theme
+
+	-- Кнопка в бічній панелі
+	local TabBtn = Instance.new("TextButton", ui.TabContainer)
+	TabBtn.Size = UDim2.new(1, 0, 0, 32)
+	TabBtn.BackgroundColor3 = theme.ElementBg
+	TabBtn.BackgroundTransparency = 1
+	TabBtn.Text = name
+	TabBtn.TextColor3 = theme.SecondaryText
+	TabBtn.Font = Enum.Font.GothamMedium
+	TabBtn.TextSize = 14
+	Instance.new("UICorner", TabBtn).CornerRadius = Settings.CornerRadius
+
+	-- Контейнер сторінки
+	local Page = Instance.new("ScrollingFrame", ui.MainFrame)
 	Page.Name = name .. "_Page"
-	Page.Size = UDim2.new(1, 0, 1, 0)
+	Page.Size = UDim2.new(1, -170, 1, -55)
+	Page.Position = UDim2.new(0, 160, 0, 45)
 	Page.BackgroundTransparency = 1
 	Page.Visible = false
 	Page.ScrollBarThickness = 2
-	Page.ScrollBarImageColor3 = self.Theme.Accent
-	Page.CanvasSize = UDim2.new(0, 0, 0, 0) -- Авто-размер через скрипт ниже
-	Page.Parent = self.PageContainer
+	Page.ScrollBarImageColor3 = theme.Accent
 
-	local PageLayout = Instance.new("UIListLayout", Page)
-	PageLayout.Padding = UDim.new(0, 6)
-	PageLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
+	local layout = Instance.new("UIListLayout", Page)
+	layout.Padding = UDim.new(0, 8)
+	layout.HorizontalAlignment = Enum.HorizontalAlignment.Center
 
-	-- Автоматическое обновление размера ScrollingFrame
-	PageLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
-		Page.CanvasSize = UDim2.new(0, 0, 0, PageLayout.AbsoluteContentSize.Y + 10)
+	layout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function() 
+		Page.CanvasSize = UDim2.new(0, 0, 0, layout.AbsoluteContentSize.Y + 10) 
 	end)
-
-	-- Кнопка переключения в сайдбаре
-	local TabBtn = Instance.new("TextButton")
-	TabBtn.Name = name .. "_TabBtn"
-	TabBtn.Size = UDim2.new(1, -10, 0, 32)
-	TabBtn.BackgroundTransparency = 1
-	TabBtn.Text = name
-	TabBtn.TextColor3 = self.Theme.SecondaryText
-	TabBtn.Font = Enum.Font.Gotham
-	TabBtn.TextSize = 14
-	TabBtn.Parent = self.TabList
 
 	TabBtn.MouseButton1Click:Connect(function()
-		-- Скрываем все страницы и деактивируем все кнопки вкладок
-		for _, p in pairs(self.Pages) do p.Visible = false end
-		for _, t in pairs(self.Objects.Tabs) do t.TextColor3 = self.Theme.SecondaryText end
-
-		-- Показываем текущую
+		for _, v in pairs(ui.Objects.Tabs) do 
+			v.Page.Visible = false
+			Tween(v.Btn, {BackgroundTransparency = 1, TextColor3 = theme.SecondaryText}) 
+		end
 		Page.Visible = true
-		TabBtn.TextColor3 = self.Theme.Accent
+		Tween(TabBtn, {BackgroundTransparency = 0.8, TextColor3 = theme.Accent})
 	end)
 
-	-- Если это первая созданная вкладка — делаем её активной
-	if #self.Pages == 0 then
+	if #ui.Objects.Tabs == 0 then 
 		Page.Visible = true
-		TabBtn.TextColor3 = self.Theme.Accent
+		TabBtn.BackgroundTransparency = 0.8
+		TabBtn.TextColor3 = theme.Accent
 	end
 
-	table.insert(self.Pages, Page)
-	table.insert(self.Objects.Tabs, TabBtn)
+	table.insert(ui.Objects.Tabs, {Page = Page, Btn = TabBtn})
 
-	-- Внутренний API для элементов внутри вкладки
-	local PageAPI = {
-		Theme = self.Theme,
-		Objects = self.Objects,
-		Container = Page
-	}
-
-	-- [8. ЭЛЕМЕНТ: КНОПКА (AddButton)]
+	local PageAPI = {}
+	-- [7. ЕЛЕМЕНТ: КНОПКА (AddButton)]
 	function PageAPI:AddButton(text, callback)
-		local BtnFrame = Instance.new("TextButton")
-		BtnFrame.Name = text .. "_Button"
-		BtnFrame.Size = UDim2.new(1, -10, 0, 32)
-		BtnFrame.BackgroundColor3 = PageAPI.Theme.ElementBg
-		BtnFrame.Text = "  " .. text
-		BtnFrame.TextColor3 = PageAPI.Theme.Text
-		BtnFrame.Font = Enum.Font.Gotham
-		BtnFrame.TextSize = 13
-		BtnFrame.TextXAlignment = Enum.TextXAlignment.Left
-		BtnFrame.AutoButtonColor = true
-		BtnFrame.Parent = Page
+		local b = Instance.new("TextButton", Page)
+		b.Size = UDim2.new(1, -10, 0, 35)
+		b.BackgroundColor3 = theme.ElementBg
+		b.Text = text
+		b.TextColor3 = theme.Text
+		b.Font = Enum.Font.Gotham
+		b.TextSize = 14
+		Instance.new("UICorner", b).CornerRadius = Settings.CornerRadius
 
-		Instance.new("UICorner", BtnFrame).CornerRadius = PageAPI.Theme.Rounding
-		table.insert(PageAPI.Objects.Elements, BtnFrame)
-
-		BtnFrame.MouseButton1Click:Connect(function()
-			-- Анимация нажатия (вспышка)
-			local oldColor = BtnFrame.BackgroundColor3
-			BtnFrame.BackgroundColor3 = PageAPI.Theme.Accent
-			TweenService:Create(BtnFrame, TweenInfo.new(0.3), {BackgroundColor3 = oldColor}):Play()
-
+		-- Анімація кліку
+		b.MouseButton1Click:Connect(function()
+			local oldColor = b.BackgroundColor3
+			Tween(b, {BackgroundColor3 = theme.Accent}, 0.1)
+			task.wait(0.1)
+			Tween(b, {BackgroundColor3 = oldColor}, 0.2)
 			callback()
 		end)
+
+		table.insert(ui.Objects.Elements, {Instance = b, Type = "Element"})
 	end
 
-	-- [9. ЭЛЕМЕНТ: ПЕРЕКЛЮЧАТЕЛЬ (AddToggle)]
+	-- [8. ЕЛЕМЕНТ: ПЕРЕМИКАЧ (AddToggle)]
 	function PageAPI:AddToggle(text, default, callback)
-		local enabled = default or false
+		local state = default or false
 
-		local ToggleFrame = Instance.new("TextButton")
-		ToggleFrame.Name = text .. "_Toggle"
-		ToggleFrame.Size = UDim2.new(1, -10, 0, 38)
-		ToggleFrame.BackgroundColor3 = PageAPI.Theme.ElementBg
-		ToggleFrame.Text = ""
-		ToggleFrame.Parent = Page
-		Instance.new("UICorner", ToggleFrame).CornerRadius = PageAPI.Theme.Rounding
+		local b = Instance.new("TextButton", Page)
+		b.Size = UDim2.new(1, -10, 0, 35)
+		b.BackgroundColor3 = theme.ElementBg
+		b.Text = "  " .. text
+		b.TextColor3 = state and theme.Text or theme.SecondaryText
+		b.Font = Enum.Font.Gotham
+		b.TextSize = 14
+		b.TextXAlignment = 0
+		Instance.new("UICorner", b).CornerRadius = Settings.CornerRadius
 
-		local Label = Instance.new("TextLabel")
-		Label.Size = UDim2.new(1, -50, 1, 0)
-		Label.Position = UDim2.new(0, 12, 0, 0)
-		Label.BackgroundTransparency = 1
-		Label.Text = text
-		Label.TextColor3 = PageAPI.Theme.SecondaryText
-		Label.Font = Enum.Font.Gotham
-		Label.TextSize = 14
-		Label.TextXAlignment = Enum.TextXAlignment.Left
-		Label.Parent = ToggleFrame
+		local ind = Instance.new("Frame", b)
+		ind.Size = UDim2.new(0, 16, 0, 16)
+		ind.Position = UDim2.new(1, -26, 0.5, -8)
+		ind.BackgroundColor3 = state and theme.Accent or Color3.fromRGB(60, 60, 60)
+		Instance.new("UICorner", ind).CornerRadius = UDim.new(0, 4)
 
-		-- Внешний бокс индикатора
-		local Box = Instance.new("Frame")
-		Box.Size = UDim2.new(0, 34, 0, 18)
-		Box.Position = UDim2.new(1, -44, 0.5, -9)
-		Box.BackgroundColor3 = Color3.fromRGB(45, 45, 45)
-		Box.Parent = ToggleFrame
-		Instance.new("UICorner", Box).CornerRadius = UDim.new(1, 0)
-
-		-- Движущийся кружок
-		local Dot = Instance.new("Frame")
-		Dot.Size = UDim2.new(0, 14, 0, 14)
-		Dot.Position = enabled and UDim2.new(1, -16, 0.5, -7) or UDim2.new(0, 2, 0.5, -7)
-		Dot.BackgroundColor3 = enabled and PageAPI.Theme.Accent or Color3.fromRGB(200, 200, 200)
-		Dot.Parent = Box
-		Instance.new("UICorner", Dot).CornerRadius = UDim.new(1, 0)
-
-		local function update()
-			local targetPos = enabled and UDim2.new(1, -16, 0.5, -7) or UDim2.new(0, 2, 0.5, -7)
-			local targetColor = enabled and PageAPI.Theme.Accent or Color3.fromRGB(200, 200, 200)
-
-			TweenService:Create(Dot, TweenInfo.new(0.2, Enum.EasingStyle.Quart), {Position = targetPos, BackgroundColor3 = targetColor}):Play()
-			callback(enabled)
-		end
-
-		ToggleFrame.MouseButton1Click:Connect(function()
-			enabled = not enabled
-			update()
+		b.MouseButton1Click:Connect(function()
+			state = not state
+			Tween(ind, {BackgroundColor3 = state and theme.Accent or Color3.fromRGB(60, 60, 60)}, 0.2)
+			Tween(b, {TextColor3 = state and theme.Text or theme.SecondaryText}, 0.2)
+			callback(state)
 		end)
 
-		table.insert(PageAPI.Objects.Elements, ToggleFrame)
+		table.insert(ui.Objects.Elements, {Instance = b, Type = "Element"})
 	end
-	
-	-- [10. ЭЛЕМЕНТ: СЛАЙДЕР (AddSlider)]
+
+	-- [9. ЕЛЕМЕНТ: СЛАЙДЕР (AddSlider)]
 	function PageAPI:AddSlider(text, min, max, default, callback)
+		local val = math.clamp(default or min, min, max)
+
+		local s = Instance.new("Frame", Page)
+		s.Size = UDim2.new(1, -10, 0, 45)
+		s.BackgroundColor3 = theme.ElementBg
+		Instance.new("UICorner", s).CornerRadius = Settings.CornerRadius
+
+		local l = Instance.new("TextLabel", s)
+		l.Size = UDim2.new(1, -20, 0, 20)
+		l.Position = UDim2.new(0, 10, 0, 5)
+		l.Text = text .. ": " .. val
+		l.TextColor3 = theme.Text
+		l.BackgroundTransparency = 1
+		l.TextXAlignment = 0
+		l.Font = Enum.Font.Gotham
+		l.TextSize = 13
+
+		local b = Instance.new("Frame", s)
+		b.Size = UDim2.new(1, -20, 0, 4)
+		b.Position = UDim2.new(0, 10, 0, 32)
+		b.BackgroundColor3 = Color3.fromRGB(45, 45, 45)
+		Instance.new("UICorner", b)
+
+		local f = Instance.new("Frame", b)
+		f.Size = UDim2.new((val - min) / (max - min), 0, 1, 0)
+		f.BackgroundColor3 = theme.Accent
+		Instance.new("UICorner", f)
+
 		local dragging = false
-		local value = math.clamp(default, min, max)
-
-		local SliderFrame = Instance.new("Frame")
-		SliderFrame.Name = text .. "_Slider"
-		SliderFrame.Size = UDim2.new(1, -10, 0, 45)
-		SliderFrame.BackgroundColor3 = PageAPI.Theme.ElementBg
-		SliderFrame.Parent = Page
-		Instance.new("UICorner", SliderFrame).CornerRadius = PageAPI.Theme.Rounding
-
-		local Label = Instance.new("TextLabel")
-		Label.Size = UDim2.new(1, -20, 0, 20)
-		Label.Position = UDim2.new(0, 12, 0, 5)
-		Label.BackgroundTransparency = 1
-		Label.Text = text .. ": " .. tostring(value)
-		Label.TextColor3 = PageAPI.Theme.SecondaryText
-		Label.Font = Enum.Font.Gotham
-		Label.TextSize = 13
-		Label.TextXAlignment = Enum.TextXAlignment.Left
-		Label.Parent = SliderFrame
-
-		local BarBg = Instance.new("Frame")
-		BarBg.Size = UDim2.new(1, -24, 0, 6)
-		BarBg.Position = UDim2.new(0, 12, 0, 32)
-		BarBg.BackgroundColor3 = Color3.fromRGB(45, 45, 45)
-		BarBg.Parent = SliderFrame
-		Instance.new("UICorner", BarBg)
-
-		local BarFill = Instance.new("Frame")
-		BarFill.Size = UDim2.new((value - min) / (max - min), 0, 1, 0)
-		BarFill.BackgroundColor3 = PageAPI.Theme.Accent
-		BarFill.BorderSizePixel = 0
-		BarFill.Parent = BarBg
-		Instance.new("UICorner", BarFill)
-
 		local function update(input)
-			local pos = math.clamp((input.Position.X - BarBg.AbsolutePosition.X) / BarBg.AbsoluteSize.X, 0, 1)
-			value = math.floor(min + (max - min) * pos)
-
-			TweenService:Create(BarFill, TweenInfo.new(0.1, Enum.EasingStyle.Quart), {Size = UDim2.new(pos, 0, 1, 0)}):Play()
-			Label.Text = text .. ": " .. tostring(value)
-			callback(value)
+			local p = math.clamp((input.Position.X - b.AbsolutePosition.X) / b.AbsoluteSize.X, 0, 1)
+			val = math.floor(min + (max - min) * p)
+			f.Size = UDim2.new(p, 0, 1, 0)
+			l.Text = text .. ": " .. val
+			callback(val)
 		end
 
-		BarBg.InputBegan:Connect(function(input)
-			if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-				dragging = true
-				update(input)
-			end
+		b.InputBegan:Connect(function(i) 
+			if i.UserInputType == Enum.UserInputType.MouseButton1 or i.UserInputType == Enum.UserInputType.Touch then 
+				dragging = true 
+				update(i) 
+			end 
 		end)
 
-		UserInputService.InputChanged:Connect(function(input)
-			if dragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
-				update(input)
-			end
+		UserInputService.InputChanged:Connect(function(i) 
+			if dragging and (i.UserInputType == Enum.UserInputType.MouseMovement or i.UserInputType == Enum.UserInputType.Touch) then 
+				update(i) 
+			end 
 		end)
 
-		UserInputService.InputEnded:Connect(function(input)
-			if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-				dragging = false
-			end
+		UserInputService.InputEnded:Connect(function(i) 
+			if i.UserInputType == Enum.UserInputType.MouseButton1 or i.UserInputType == Enum.UserInputType.Touch then 
+				dragging = false 
+			end 
 		end)
 
-		table.insert(PageAPI.Objects.Elements, SliderFrame)
+		table.insert(ui.Objects.Elements, {Instance = s, Type = "Element"})
 	end
 
-	-- [11. ЭЛЕМЕНТ: ВЫБОР ЦВЕТА (AddColorPicker)]
-	function PageAPI:AddColorPicker(text, default, callback)
-		local currentColor = default
-		local open = false
+	-- [10. ЕЛЕМЕНТ: ВИПАДАЮЧИЙ СПИСОК (AddDropdown)]
+	function PageAPI:AddDropdown(text, list, callback)
+		local opened = false
+		local selected = list[1]
 
-		local PickerFrame = Instance.new("Frame")
-		PickerFrame.Name = text .. "_Picker"
-		PickerFrame.Size = UDim2.new(1, -10, 0, 35)
-		PickerFrame.BackgroundColor3 = PageAPI.Theme.ElementBg
-		PickerFrame.ClipsDescendants = true
-		PickerFrame.Parent = Page
-		Instance.new("UICorner", PickerFrame).CornerRadius = PageAPI.Theme.Rounding
+		local d = Instance.new("Frame", Page)
+		d.Size = UDim2.new(1, -10, 0, 35)
+		d.BackgroundColor3 = theme.ElementBg
+		d.ClipsDescendants = true
+		Instance.new("UICorner", d).CornerRadius = Settings.CornerRadius
 
-		local HeaderBtn = Instance.new("TextButton", PickerFrame)
-		HeaderBtn.Size = UDim2.new(1, 0, 0, 35)
-		HeaderBtn.BackgroundTransparency = 1
-		HeaderBtn.Text = "  " .. text
-		HeaderBtn.TextColor3 = PageAPI.Theme.SecondaryText
-		HeaderBtn.Font = Enum.Font.Gotham
-		HeaderBtn.TextSize = 14
-		HeaderBtn.TextXAlignment = Enum.TextXAlignment.Left
+		local h = Instance.new("TextButton", d)
+		h.Size = UDim2.new(1, 0, 0, 35)
+		h.BackgroundTransparency = 1
+		h.Text = "  " .. text .. ": " .. tostring(selected)
+		h.TextColor3 = theme.SecondaryText
+		h.Font = Enum.Font.Gotham; h.TextSize = 14; h.TextXAlignment = 0
 
-		local Preview = Instance.new("Frame", HeaderBtn)
-		Preview.Size = UDim2.new(0, 22, 0, 22)
-		Preview.Position = UDim2.new(1, -32, 0, 6.5)
-		Preview.BackgroundColor3 = default
-		Instance.new("UICorner", Preview).CornerRadius = UDim.new(0, 4)
+		local c = Instance.new("Frame", d)
+		c.Position = UDim2.new(0, 0, 0, 35)
+		c.Size = UDim2.new(1, 0, 0, 0)
+		c.BackgroundTransparency = 1
+		local l = Instance.new("UIListLayout", c)
 
-		-- Скрытый контейнер для каналов RGB
-		local RGBContainer = Instance.new("Frame", PickerFrame)
-		RGBContainer.Size = UDim2.new(1, -20, 0, 90)
-		RGBContainer.Position = UDim2.new(0, 10, 0, 40)
-		RGBContainer.BackgroundTransparency = 1
+		local function refresh()
+			for _, v in pairs(list) do
+				local i = Instance.new("TextButton", c)
+				i.Size = UDim2.new(1, 0, 0, 30)
+				i.BackgroundTransparency = 1
+				i.Text = tostring(v)
+				i.TextColor3 = theme.SecondaryText
+				i.Font = Enum.Font.Gotham; i.TextSize = 13
 
-		local function updateColor()
-			Preview.BackgroundColor3 = currentColor
-			callback(currentColor)
-		end
-
-		local function createChannel(name, color, yPos, property)
-			local ChannelFrame = Instance.new("Frame", RGBContainer)
-			ChannelFrame.Size = UDim2.new(1, 0, 0, 25)
-			ChannelFrame.Position = UDim2.new(0, 0, 0, yPos)
-			ChannelFrame.BackgroundTransparency = 1
-
-			local Title = Instance.new("TextLabel", ChannelFrame)
-			Title.Size = UDim2.new(0, 20, 1, 0)
-			Title.Text = name
-			Title.TextColor3 = color
-			Title.Font = Enum.Font.GothamBold
-			Title.BackgroundTransparency = 1
-
-			local Bar = Instance.new("Frame", ChannelFrame)
-			Bar.Size = UDim2.new(1, -30, 0, 4)
-			Bar.Position = UDim2.new(0, 25, 0.5, -2)
-			Bar.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
-			Instance.new("UICorner", Bar)
-
-			local Fill = Instance.new("Frame", Bar)
-			local startValue = (property == "R" and currentColor.R or property == "G" and currentColor.G or currentColor.B)
-			Fill.Size = UDim2.new(startValue, 0, 1, 0)
-			Fill.BackgroundColor3 = color
-			Instance.new("UICorner", Fill)
-
-			local draggingChannel = false
-			local function moveChannel(input)
-				local p = math.clamp((input.Position.X - Bar.AbsolutePosition.X) / Bar.AbsoluteSize.X, 0, 1)
-				Fill.Size = UDim2.new(p, 0, 1, 0)
-
-				local r, g, b = currentColor.R, currentColor.G, currentColor.B
-				if property == "R" then r = p elseif property == "G" then g = p else b = p end
-				currentColor = Color3.new(r, g, b)
-				updateColor()
+				i.MouseButton1Click:Connect(function()
+					selected = v
+					h.Text = "  " .. text .. ": " .. tostring(v)
+					opened = false
+					Tween(d, {Size = UDim2.new(1, -10, 0, 35)})
+					callback(v)
+				end)
 			end
-
-			Bar.InputBegan:Connect(function(i) if i.UserInputType == Enum.UserInputType.MouseButton1 then draggingChannel = true moveChannel(i) end end)
-			UserInputService.InputChanged:Connect(function(i) if draggingChannel and i.UserInputType == Enum.UserInputType.MouseMovement then moveChannel(i) end end)
-			UserInputService.InputEnded:Connect(function(i) if i.UserInputType == Enum.UserInputType.MouseButton1 then draggingChannel = false end end)
 		end
 
-		createChannel("R", Color3.fromRGB(255, 75, 75), 0, "R")
-		createChannel("G", Color3.fromRGB(75, 255, 75), 30, "G")
-		createChannel("B", Color3.fromRGB(75, 75, 255), 60, "B")
-
-		HeaderBtn.MouseButton1Click:Connect(function()
-			open = not open
-			local targetSize = open and UDim2.new(1, -10, 0, 140) or UDim2.new(1, -10, 0, 35)
-			TweenService:Create(PickerFrame, TweenInfo.new(0.35, Enum.EasingStyle.Quart), {Size = targetSize}):Play()
+		h.MouseButton1Click:Connect(function()
+			opened = not opened
+			local target = opened and UDim2.new(1, -10, 0, 35 + l.AbsoluteContentSize.Y) or UDim2.new(1, -10, 0, 35)
+			Tween(d, {Size = target})
 		end)
 
-		table.insert(PageAPI.Objects.Elements, PickerFrame)
+		refresh()
+		table.insert(ui.Objects.Elements, {Instance = d, Type = "Element"})
 	end
-	-- [12. ЭЛЕМЕНТ: НАЗНАЧЕНИЕ КЛАВИШ (AddKeybind)]
+
+	-- [11. ЕЛЕМЕНТ: БІНД КЛАВІШ (AddKeybind)]
 	function PageAPI:AddKeybind(text, default, callback)
-		local currentKey = default or Enum.KeyCode.F
+		local key = default
 		local binding = false
 
-		local BindFrame = Instance.new("Frame")
-		BindFrame.Name = text .. "_Bind"
-		BindFrame.Size = UDim2.new(1, -10, 0, 35)
-		BindFrame.BackgroundColor3 = PageAPI.Theme.ElementBg
-		BindFrame.Parent = Page
-		Instance.new("UICorner", BindFrame).CornerRadius = PageAPI.Theme.Rounding
+		local b = Instance.new("Frame", Page)
+		b.Size = UDim2.new(1, -10, 0, 35); b.BackgroundColor3 = theme.ElementBg
+		Instance.new("UICorner", b).CornerRadius = Settings.CornerRadius
 
-		local Label = Instance.new("TextLabel")
-		Label.Size = UDim2.new(1, -70, 1, 0)
-		Label.Position = UDim2.new(0, 12, 0, 0)
-		Label.BackgroundTransparency = 1
-		Label.Text = text
-		Label.TextColor3 = PageAPI.Theme.SecondaryText
-		Label.Font = Enum.Font.Gotham
-		Label.TextSize = 14
-		Label.TextXAlignment = Enum.TextXAlignment.Left
-		Label.Parent = BindFrame
+		local l = Instance.new("TextLabel", b)
+		l.Size = UDim2.new(1, 0, 1, 0); l.Position = UDim2.new(0, 10, 0, 0)
+		l.Text = text; l.TextColor3 = theme.SecondaryText; l.Font = 17; l.TextSize = 14; l.TextXAlignment = 0; l.BackgroundTransparency = 1
 
-		local BindBtn = Instance.new("TextButton")
-		BindBtn.Size = UDim2.new(0, 65, 0, 25)
-		BindBtn.Position = UDim2.new(1, -75, 0.5, -12)
-		BindBtn.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
-		BindBtn.Text = currentKey.Name
-		BindBtn.TextColor3 = PageAPI.Theme.Text
-		BindBtn.Font = Enum.Font.GothamBold
-		BindBtn.TextSize = 12
-		BindBtn.Parent = BindFrame
-		Instance.new("UICorner", BindBtn).CornerRadius = UDim.new(0, 4)
+		local k = Instance.new("TextButton", b)
+		k.Size = UDim2.new(0, 70, 0, 22); k.Position = UDim2.new(1, -80, 0.5, -11)
+		k.BackgroundColor3 = Color3.fromRGB(35, 35, 35); k.Text = key.Name; k.TextColor3 = theme.Text; k.Font = 17; k.TextSize = 12
+		Instance.new("UICorner", k)
 
-		BindBtn.MouseButton1Click:Connect(function()
+		k.MouseButton1Click:Connect(function()
 			binding = true
-			BindBtn.Text = "..."
-			BindBtn.TextColor3 = PageAPI.Theme.Accent
+			k.Text = "..."
 		end)
 
 		UserInputService.InputBegan:Connect(function(input, gpe)
 			if gpe then return end
-
 			if binding then
 				if input.UserInputType == Enum.UserInputType.Keyboard then
-					currentKey = input.KeyCode
+					key = input.KeyCode
+					k.Text = key.Name
 					binding = false
-					BindBtn.Text = currentKey.Name
-					BindBtn.TextColor3 = PageAPI.Theme.Text
 				end
-			else
-				if input.KeyCode == currentKey then
-					callback()
-				end
+			elseif input.KeyCode == key then
+				callback()
 			end
 		end)
-
-		table.insert(PageAPI.Objects.Elements, BindFrame)
 	end
 
-	-- [13. ЭЛЕМЕНТ: ПОЛЕ ВВОДА (AddTextBox)]
+	-- [12. ЕЛЕМЕНТ: ПОЛЕ ВВОДУ (AddTextBox)]
 	function PageAPI:AddTextBox(text, placeholder, callback)
-		local BoxFrame = Instance.new("Frame")
-		BoxFrame.Name = text .. "_TextBox"
-		BoxFrame.Size = UDim2.new(1, -10, 0, 35)
-		BoxFrame.BackgroundColor3 = PageAPI.Theme.ElementBg
-		BoxFrame.Parent = Page
-		Instance.new("UICorner", BoxFrame).CornerRadius = PageAPI.Theme.Rounding
+		local b = Instance.new("Frame", Page)
+		b.Size = UDim2.new(1, -10, 0, 35); b.BackgroundColor3 = theme.ElementBg
+		Instance.new("UICorner", b).CornerRadius = Settings.CornerRadius
 
-		local Label = Instance.new("TextLabel")
-		Label.Size = UDim2.new(0, 100, 1, 0)
-		Label.Position = UDim2.new(0, 12, 0, 0)
-		Label.BackgroundTransparency = 1
-		Label.Text = text
-		Label.TextColor3 = PageAPI.Theme.SecondaryText
-		Label.Font = Enum.Font.Gotham
-		Label.TextSize = 14
-		Label.TextXAlignment = Enum.TextXAlignment.Left
-		Label.Parent = BoxFrame
+		local t = Instance.new("TextBox", b)
+		t.Size = UDim2.new(1, -20, 1, 0); t.Position = UDim2.new(0, 10, 0, 0)
+		t.BackgroundTransparency = 1; t.Text = ""; t.PlaceholderText = text .. " (" .. placeholder .. ")"
+		t.PlaceholderColor3 = theme.SecondaryText; t.TextColor3 = theme.Text; t.Font = 17; t.TextSize = 14; t.TextXAlignment = 0
 
-		local Input = Instance.new("TextBox")
-		Input.Size = UDim2.new(1, -125, 0, 25)
-		Input.Position = UDim2.new(0, 115, 0.5, -12)
-		Input.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
-		Input.Text = ""
-		Input.PlaceholderText = placeholder or "..."
-		Input.PlaceholderColor3 = Color3.fromRGB(100, 100, 100)
-		Input.TextColor3 = PageAPI.Theme.Text
-		Input.Font = Enum.Font.Gotham
-		Input.TextSize = 12
-		Input.ClearTextOnFocus = false
-		Input.Parent = BoxFrame
-		Instance.new("UICorner", Input).CornerRadius = UDim.new(0, 4)
-
-		Input.FocusLost:Connect(function(enterPressed)
-			callback(Input.Text, enterPressed)
+		t.FocusLost:Connect(function(enter)
+			callback(t.Text, enter)
 		end)
+	end
 
-		table.insert(PageAPI.Objects.Elements, BoxFrame)
+	-- [13. ЕЛЕМЕНТ: ВИБІР КОЛЬОРУ (AddColorPicker)]
+	function PageAPI:AddColorPicker(text, default, callback)
+		local ui = ui -- Посилання на головний об'єкт
+		local theme = theme
+		local currentColor = default or Color3.fromRGB(255, 0, 0)
+		local opened = false
+
+		local p = Instance.new("Frame", Page)
+		p.Size = UDim2.new(1, -10, 0, 35)
+		p.BackgroundColor3 = theme.ElementBg
+		p.ClipsDescendants = true
+		Instance.new("UICorner", p).CornerRadius = Settings.CornerRadius
+
+		local h = Instance.new("TextButton", p)
+		h.Size = UDim2.new(1, 0, 0, 35)
+		h.BackgroundTransparency = 1
+		h.Text = "  " .. text
+		h.TextColor3 = theme.SecondaryText
+		h.Font = Enum.Font.Gotham; h.TextSize = 14; h.TextXAlignment = 0
+
+		local preview = Instance.new("Frame", h)
+		preview.Size = UDim2.new(0, 20, 0, 20)
+		preview.Position = UDim2.new(1, -30, 0.5, -10)
+		preview.BackgroundColor3 = currentColor
+		Instance.new("UICorner", preview).CornerRadius = UDim.new(0, 4)
+
+		local container = Instance.new("Frame", p)
+		container.Position = UDim2.new(0, 0, 0, 35)
+		container.Size = UDim2.new(1, 0, 0, 100)
+		container.BackgroundTransparency = 1
+
+		local function createChannel(name, color, yPos, property)
+			local canvas = Instance.new("Frame", container)
+			canvas.Size = UDim2.new(1, -20, 0, 30)
+			canvas.Position = UDim2.new(0, 10, 0, yPos)
+			canvas.BackgroundTransparency = 1
+
+			local label = Instance.new("TextLabel", canvas)
+			label.Size = UDim2.new(0, 20, 1, 0)
+			label.Text = name; label.TextColor3 = color; label.Font = Enum.Font.GothamBold
+			label.BackgroundTransparency = 1; label.TextSize = 12
+
+			local bar = Instance.new("Frame", canvas)
+			bar.Size = UDim2.new(1, -30, 0, 4)
+			bar.Position = UDim2.new(0, 25, 0.5, -2)
+			bar.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+			Instance.new("UICorner", bar)
+
+			local fill = Instance.new("Frame", bar)
+			local startVal = (property == "R" and currentColor.R or property == "G" and currentColor.G or currentColor.B)
+			fill.Size = UDim2.new(startVal, 0, 1, 0); fill.BackgroundColor3 = color
+			Instance.new("UICorner", fill)
+
+			local drag = false
+			local function update(input)
+				local pos = math.clamp((input.Position.X - bar.AbsolutePosition.X) / bar.AbsoluteSize.X, 0, 1)
+				fill.Size = UDim2.new(pos, 0, 1, 0)
+
+				local r, g, b = currentColor.R, currentColor.G, currentColor.B
+				if property == "R" then r = pos elseif property == "G" then g = pos else b = pos end
+				currentColor = Color3.new(r, g, b)
+				preview.BackgroundColor3 = currentColor
+				callback(currentColor)
+			end
+
+			bar.InputBegan:Connect(function(i) if i.UserInputType == Enum.UserInputType.MouseButton1 or i.UserInputType == Enum.UserInputType.Touch then drag = true update(i) end end)
+			UserInputService.InputChanged:Connect(function(i) if drag and (i.UserInputType == Enum.UserInputType.MouseMovement or i.UserInputType == Enum.UserInputType.Touch) then update(i) end end)
+			UserInputService.InputEnded:Connect(function() drag = false end)
+		end
+
+		createChannel("R", Color3.fromRGB(255, 75, 75), 5, "R")
+		createChannel("G", Color3.fromRGB(75, 255, 75), 35, "G")
+		createChannel("B", Color3.fromRGB(75, 75, 255), 65, "B")
+
+		h.MouseButton1Click:Connect(function()
+			opened = not opened
+			Tween(p, {Size = opened and UDim2.new(1, -10, 0, 140) or UDim2.new(1, -10, 0, 35)})
+		end)
 	end
 
 	return PageAPI
 end
+-- [15. МЕНЕДЖЕР ТЕМ (Theme Manager)]
 
--- [14. ГЛОБАЛЬНАЯ СМЕНА ТЕМЫ]
-function TerrorUi:ApplyTheme(themeName)
-	local theme = (type(themeName) == "table") and themeName or Themes[themeName]
-	if not theme then return end
-
-	self.Theme = theme
-
-	-- Обновляем главный фрейм
-	if self.MainFrame then
-		self.MainFrame.BackgroundColor3 = theme.MainBg
-		self.MainFrame.BackgroundTransparency = theme.Transparency
-		self.MainFrame.UICorner.CornerRadius = theme.Rounding
-	end
-
-	-- Обновляем мобильную кнопку
-	if self.MobileButton then
-		self.MobileButton.BackgroundColor3 = theme.MainBg
-		self.MobileButton.TextColor3 = theme.Accent
-		self.MobileButton.UIStroke.Color = theme.Accent
-	end
-
-	-- Обновляем разделители
-	for _, sep in pairs(self.Objects.Separators) do
-		sep.BackgroundColor3 = theme.ElementBg
-	end
-
-	-- Обновляем элементы
-	for _, el in pairs(self.Objects.Elements) do
-		if el:IsA("Frame") or el:IsA("TextButton") then
-			el.BackgroundColor3 = theme.ElementBg
-		end
-		-- Дочерние тексты
-		for _, child in pairs(el:GetDescendants()) do
-			if child:IsA("TextLabel") and child.Name ~= "Indicator" then
-				child.TextColor3 = theme.SecondaryText
-			end
+-- Функція для оновлення конкретного об'єкта під нову тему
+function TerrorUi:_UpdateObjectTheme(obj, theme)
+	if obj.Type == "Element" or obj.Type == "Tab" then
+		Tween(obj.Instance, {BackgroundColor3 = theme.ElementBg})
+		-- Якщо це текст, можна додати логіку оновлення кольору тексту
+	elseif obj.Type == "Main" then
+		Tween(obj.Instance, {BackgroundColor3 = theme.MainBg})
+	elseif obj.Type == "Accent" then
+		if obj.Instance:IsA("Frame") then
+			Tween(obj.Instance, {BackgroundColor3 = theme.Accent})
+		elseif obj.Instance:IsA("TextLabel") or obj.Instance:IsA("TextButton") then
+			Tween(obj.Instance, {TextColor3 = theme.Accent})
+		elseif obj.Instance:IsA("UIStroke") then
+			Tween(obj.Instance, {Color = theme.Accent})
 		end
 	end
 end
 
-return TerrorUi
+-- Головна функція зміни теми
+function TerrorUi:SetTheme(themeName)
+	local newTheme = Themes[themeName]
+	if not newTheme then 
+		warn("TerrorUi: Тема '" .. tostring(themeName) .. "' не знайдена!")
+		return 
+	end
 
+	self.Theme = newTheme
+
+	-- 1. Оновлюємо головне вікно
+	Tween(self.MainFrame, {BackgroundColor3 = newTheme.MainBg})
+
+	-- 2. Оновлюємо заголовок
+	-- (Якщо ти реєстрував TitleLabel в Objects)
+
+	-- 3. Проходимо по всіх зареєстрованих об'єктах
+	for _, obj in pairs(self.Objects.Elements) do
+		if obj.Instance and obj.Instance.Parent then
+			-- Оновлюємо фон елемента
+			if obj.Instance:IsA("TextButton") or obj.Instance:IsA("Frame") then
+				Tween(obj.Instance, {BackgroundColor3 = newTheme.ElementBg})
+			end
+
+			-- Оновлюємо акценти всередині елемента (чекбокси, слайдери)
+			for _, child in pairs(obj.Instance:GetDescendants()) do
+				if child.Name == "Indicator" or child.Name == "Fill" then
+					Tween(child, {BackgroundColor3 = newTheme.Accent})
+				end
+			end
+		end
+	end
+
+	-- 4. Оновлюємо активні та неактивні вкладки
+	for _, tab in pairs(self.Objects.Tabs) do
+		if tab.Page.Visible then
+			Tween(tab.Btn, {TextColor3 = newTheme.Accent})
+		else
+			Tween(tab.Btn, {TextColor3 = newTheme.SecondaryText})
+		end
+	end
+
+	-- 5. Оновлюємо мобільну кнопку, якщо вона є
+	if self.ScreenGui:FindFirstChild("TerrorMobile") then
+		local MB = self.ScreenGui.TerrorMobile
+		Tween(MB, {BackgroundColor3 = newTheme.MainBg, TextColor3 = newTheme.Accent})
+		if MB:FindFirstChildOfClass("UIStroke") then
+			Tween(MB:FindFirstChildOfClass("UIStroke"), {Color = newTheme.Accent})
+		end
+	end
+end
+
+-- Додатковий метод для створення власних тем вручну
+function TerrorUi:AddCustomTheme(name, config)
+	Themes[name] = config
+end
+
+return TerrorUi

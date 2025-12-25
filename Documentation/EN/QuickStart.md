@@ -70,4 +70,4 @@ Each element (Button, Toggle, etc.) requires a **Callback Function**. This is th
 
 ---
 
-[⬅ Back to Navigation](Documentation/EN/Navigation.md)
+[⬅ Back to Navigation](Navigation.md)

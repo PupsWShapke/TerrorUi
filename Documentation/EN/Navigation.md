@@ -4,34 +4,33 @@ Welcome to the **TerrorUi** documentation. Use the links below to navigate throu
 
 ## 🚩 Getting Started
 
-* **[Installation](Documentation/EN/Installation.md)** — How to load the library into your project.
-* **[Quick Start](Documentation/EN/QuickStart.md)** — A minimal script to get your first window running.
-* **[Library Workflow](Documentation/EN/Hierarchy.md)** — Understanding the hierarchy (Window -> Tab -> Element).
+* **[Installation](Installation.md)** — How to load the library into your project.
+* **[Quick Start](QuickStart.md)** — A minimal script to get your first window running.
+* **[Library Workflow](Hierarchy.md)** — Understanding the hierarchy (Window → Tab → Element).
 
 ## 🏗️ Core API
 
-* **[Window Management](Documentation/EN/WinManagment.md)** — Documentation for `.new()`, `:Toggle()`, and `:Notify()`.
-* **[Mobile Support](Documentation/EN/MobileSupport.md)** — Setting up the draggable toggle button for mobile users.
-* **[Tabs](Documentation/EN/Tabs)** — Creating and managing different sections of your UI.
+* **[Window Management](WinManagment.md)** — Documentation for `.new()`, `:Toggle()`, and `:Notify()`.
+* **[Mobile Support](MobileSupport.md)** — Setting up the draggable toggle button for mobile users.
+* **[Tabs](Tabs)** — Creating and managing different sections of your UI.
 
 ## 🖱️ UI Elements
 
 Detailed arguments and callbacks for every available component:
 
-* **[Buttons & Toggles](Documentation/EN/Buttons+Toggles.md)** — Standard interactive triggers.
-* **[Sliders & Input](Documentation/EN/Sliders+Input.md)** — Numeric ranges and text input fields.
-* **[Dropdowns](Documentation/EN/Dropdowns.md)** — Selection lists and menus.
-* **[Keybinds](Documentation/EN/Keybinds.md)** — Binding keyboard keys to functions.
-* **[ColorPickers](Documentation/EN/ColorPicker.md)** — Advanced RGB color selection.
+* **[Buttons & Toggles](Buttons+Toggles.md)** — Standard interactive triggers.
+* **[Sliders & Input](Sliders+Input.md)** — Numeric ranges and text input fields.
+* **[Dropdowns](Dropdowns.md)** — Selection lists and menus.
+* **[Keybinds](Keybinds.md)** — Binding keyboard keys to functions.
+* **[Color Pickers](ColorPicker.md)** — Advanced RGB color selection.
 
 ## 🎨 Design & Customization
 
-* **[Theming](Documentation/EN/Theming.md)** — Switching between "Default" and "Midnight" modes.
-* **[Custom Themes](Documentation/EN/CustomThemes.md)** — How to define your own color palettes.
-* **[Animations](Documentation/EN/Animations.md)** — Understanding the TweenService logic used in the library.
+* **[Theming](Theming.md)** — Switching between "Default" and "Midnight" modes.
+* **[Custom Themes](CustomThemes.md)** — How to define your own color palettes.
+* **[Animations](Animations.md)** — Understanding the TweenService logic used in the library.
 
 ## 🧠 Advanced Topics
 
-* **[Performance Tips](Documentation/EN/PerformanceTips.md)** — Handling many elements without lag.
-* **[Internal Logic](Documentation/EN/InternalLogic.md)** — Modifying the source code safely.
-
+* **[Performance Tips](PerformanceTips.md)** — Handling many elements without lag.
+* **[Internal Logic](InternalLogic.md)** — Modifying the source code safely.

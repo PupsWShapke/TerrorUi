@@ -44,3 +44,7 @@ To ensure the library functions correctly, please check the following:
 * **HTTP Requests**: If you are using Method 1, ensure **Allow HTTP Requests** is enabled in your Game Settings (Security tab).
 * **API Services**: Enable **Allow Access to API Services** if you plan to save configurations or themes.
 * **Environment**: This library is designed to run in a **LocalScript**. Do not attempt to run it from a Server Script.
+
+---
+
+[⬅ Back to Navigation](Navigation.md)

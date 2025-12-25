@@ -6,13 +6,13 @@ Welcome to the **TerrorUi** documentation. Use the links below to navigate throu
 
 * **[Installation](Installation.md)** — How to load the library into your project.
 * **[Quick Start](QuickStart.md)** — A minimal script to get your first window running.
-* **[Library Workflow](Hierarchy.md)** — Understanding the hierarchy (Window → Tab → Element).
+* **[Library Workflow](hierarchy.md)** — Understanding the hierarchy (Window → Tab → Element).
 
 ## 🏗️ Core API
 
 * **[Window Management](WinManagment.md)** — Documentation for `.new()`, `:Toggle()`, and `:Notify()`.
 * **[Mobile Support](MobileSupport.md)** — Setting up the draggable toggle button for mobile users.
-* **[Tabs](Tabs)** — Creating and managing different sections of your UI.
+* **[Tabs](Tabs.md)** — Creating and managing different sections of your UI.
 
 ## 🖱️ UI Elements
 
